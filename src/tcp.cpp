@@ -130,7 +130,7 @@ void TCPServer::sendTemperatureDataToAllClients()
         }
         else
         {
-            logMessage("Sent temperature data to client.");
+            // logMessage("Sent temperature data to client.");
         }
     }
 }
