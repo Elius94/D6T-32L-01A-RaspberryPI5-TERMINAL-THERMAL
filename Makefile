@@ -13,6 +13,7 @@ INCLUDES = -I/usr/include -I./inc/
 # Source files
 SRCS = ./src/main.cpp
 SRCS += ./src/D6T.cpp
+SRCS += ./src/tcp.cpp
 
 # Object files directory
 OBJDIR = ./obj

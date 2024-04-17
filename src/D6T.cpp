@@ -6,7 +6,7 @@
 TempSensor::TempSensor()
 {
     delay(350);
-    printf("D6T-32L-01A I2C example\n");
+    printf("D6T-32L-01A I2C Thermal Images Gateway\n");
     // 1. Initialize
     initialSetting();
     printf("Initialization done\n");
@@ -18,7 +18,7 @@ TempSensor::~TempSensor()
 {
 }
 
-double TempSensor::getTemperature()
+double TempSensor::getMeasure()
 {
     // printf("Reading data\n");
     int i;
@@ -34,11 +34,11 @@ double TempSensor::getTemperature()
         }
         else if (ret == 23)
         { // write error
-            delay(60);
+            // delay(60);
         }
         else if (ret == 24)
         { // read error
-            delay(60);
+            // delay(60);
         }
     }
     // printf("Read done\n");
@@ -65,9 +65,8 @@ double TempSensor::getTemperature()
     return ptat;
 }
 
-void TempSensor::printTemperatureImageInTerminal() {
-    // Clear the shell
-    system("clear");
+std::string TempSensor::getTemperatureImageString() {
+    std::string temperatureImage;
 
     // Define the temperature range
     const double minTemp = 0.0;
@@ -82,11 +81,11 @@ void TempSensor::printTemperatureImageInTerminal() {
         int colorIndex = 231 - round(normalizedTemp * 215);
 
         // Set the color of the terminal output using ANSI escape sequences
-        std::cout << "\033[48;5;" << colorIndex << "m  "; // Background color
+        temperatureImage += "\033[48;5;" + std::to_string(colorIndex) + "m  "; // Background color
 
         // If we reached the end of a row, move to the next line
         if ((i + 1) % 32 == 0) {
-            std::cout << "\033[0m\n"; // Reset color and move to next line
+            temperatureImage += "\033[0m\n"; // Reset color and move to next line
         }
     }
 
@@ -94,9 +93,11 @@ void TempSensor::printTemperatureImageInTerminal() {
 
     double max = *std::max_element(pix_data, pix_data + N_PIXEL);
     double min = *std::min_element(pix_data, pix_data + N_PIXEL);
-    std::cout << "PTAT: " << ptat << " [degC]";
-    std::cout << " Max: " << max << " [degC] Min: " << min << " [degC]";
-    std::cout << std::endl;
+    temperatureImage += "PTAT: " + std::to_string(ptat) + " [degC]";
+    temperatureImage += " Max: " + std::to_string(max) + " [degC] Min: " + std::to_string(min) + " [degC]";
+    temperatureImage += "\n";
+
+    return temperatureImage;
 }
 
 uint32_t TempSensor::i2c_read_reg8(uint8_t devAddr, uint8_t regAddr,
