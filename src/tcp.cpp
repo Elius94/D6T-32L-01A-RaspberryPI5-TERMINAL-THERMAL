@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <zlib.h> // For CRC32 calculation
 
 void TCPServer::startServer()
 {
@@ -67,31 +68,69 @@ void TCPServer::handleConnections()
 
 void TCPServer::sendTemperatureDataToAllClients()
 {
-    // Copia la lista dei client connessi per evitare modifiche durante l'iterazione
-    std::vector<int> connectedClients = clientSockets;
+    // Header
+    uint32_t header = 0xaabbccdd;
+    header = htonl(header);
 
-    // Invia dati di temperatura ai client connessi
-    for (int clientSocket : connectedClients)
+    // Numero di pixel presenti
+    uint32_t numPixels = N_PIXEL;
+    numPixels = htonl(numPixels);
+
+    // Numero di righe
+    uint32_t numRows = N_ROW;
+    numRows = htonl(numRows);
+
+    // Dati di temperatura
+    std::vector<uint32_t> temperatureData;
+    // Popola temperatureData con i dati di temperatura
+    for (int i = 0; i < N_PIXEL; i++)
     {
-        // Controlla se il socket del client è ancora valido
-        if (std::find(clientSockets.begin(), clientSockets.end(), clientSocket) == clientSockets.end())
-        {
-            // Il client è stato chiuso, passa al prossimo client
-            continue;
-        }
+        uint32_t temp = htonl(static_cast<uint32_t>(pixData[i] * 100));
+        temperatureData.push_back(temp);
+    }
 
-        int bytesSent = send(clientSocket, reinterpret_cast<const char *>(pixData), N_PIXEL * sizeof(double), 0);
+    // Calcola CRC32 dei dati
+    unsigned long crc = crc32(0L, Z_NULL, 0); // Inizializza CRC32
+    for (uint32_t temp : temperatureData)
+    {
+        crc = crc32(crc, reinterpret_cast<const Bytef *>(&temp), sizeof(temp));
+    }
+    crc = htonl(crc);
+
+    // Creazione del buffer per l'invio
+    std::vector<char> buffer(sizeof(header) + sizeof(numPixels) + sizeof(numRows) + temperatureData.size() * sizeof(uint32_t) + sizeof(crc));
+    char *ptr = buffer.data();
+
+    // Copia dei dati nel buffer
+    memcpy(ptr, &header, sizeof(header));
+    ptr += sizeof(header);
+
+    memcpy(ptr, &numPixels, sizeof(numPixels));
+    ptr += sizeof(numPixels);
+
+    memcpy(ptr, &numRows, sizeof(numRows));
+    ptr += sizeof(numRows);
+
+    memcpy(ptr, temperatureData.data(), temperatureData.size() * sizeof(uint32_t));
+    ptr += temperatureData.size() * sizeof(uint32_t);
+
+    memcpy(ptr, &crc, sizeof(crc));
+
+    // Invio dei dati a tutti i client connessi
+    for (int clientSocket : clientSockets)
+    {
+        ssize_t bytesSent = send(clientSocket, buffer.data(), buffer.size(), 0);
         if (bytesSent == -1)
         {
             logError("Error: Failed to send temperature data to client.");
-            // Gestisci la chiusura del socket
-            close(clientSocket);
-            // Rimuovi il client dalla lista
-            clientSockets.erase(std::remove(clientSockets.begin(), clientSockets.end(), clientSocket), clientSockets.end());
+        }
+        else if (static_cast<size_t>(bytesSent) != buffer.size())
+        {
+            logError("Error: Incomplete temperature data sent to client.");
         }
         else
         {
-            tcpMessageCounter++;
+            logMessage("Sent temperature data to client.");
         }
     }
 }

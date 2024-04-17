@@ -8,7 +8,7 @@ CFLAGS = -Wall -Wextra -pedantic -std=c++20
 # Include directories
 INCLUDES = -I/usr/include -I./inc/
 # Libraries
-# LIBS = -lwiringPi
+LIBS = -lz
 
 # Source files
 SRCS = ./src/main.cpp
